@@ -75,17 +75,28 @@ async def insert(file: UploadFile = File(...), table: str=None, db: _orm.Session
             #data.to_sql(name='employees', con=_database.engine, if_exists='append', index=False)
             with _database.sessionLocal() as session:
                 for i, row in data.iterrows():
+                    ##############################################
+                    ######## validate from 1 to 1000 rows in batch
+                    ##Validate logic to only include rows with jobId and departmentId already created
+                    ##Add logic to add batch for Jobs and Departments
 
                     #Validate If the Employee Id not exists yet
                     if (session.query(model.Employee).filter(model.Employee.id == int(row['id'])).first()):
                         raise HTTPException(f"Id {row['id']} already exist")
-
-
-                    #Adding a new Employee
-                    new_Employee = model.Employee(id=int(row['id']), name=str(row['name']), datetime=row['datetime'], department_id= int(row['department_id']), job_id=int(row['job_id']))
-                    print(f"{new_Employee.id}, {new_Employee.department_id}, {new_Employee.job_id}")
-                    session.add(new_Employee)
-                    items.append(new_Employee)
+                    
+                    #Validate If the row includes a JobId already created in Job Table
+                    if (session.query(model.Job).filter(model.Job.id == int(row['job_id'])).first()):
+                        if (session.query(model.Department).filter(model.Department.id == int(row['department_id'])).first()):
+                        
+                            #Adding a new Employee
+                            new_Employee = model.Employee(id=int(row['id']), name=str(row['name']), datetime=row['datetime'], department_id= int(row['department_id']), job_id=int(row['job_id']))
+                            print(f"{new_Employee.id}, {new_Employee.department_id}, {new_Employee.job_id}")
+                            session.add(new_Employee)
+                            items.append(new_Employee)
+                        else:
+                            raise HTTPException(f"DepartmentId {row['department_id']} not exist in Department table. Be sure to first create the item")    
+                    else:
+                        raise HTTPException(f"JobId {row['job_id']} not exist in Job table. Be sure to first create the item")
                 
                 #If all process executed succesfully, we will make the commit in DB
                 session.commit()
