@@ -3,10 +3,13 @@ from fastapi import FastAPI, UploadFile, File, Depends, HTTPException
 import utils
 import database as _database
 import sqlalchemy.orm as _orm
+from sqlalchemy import Integer, String, DateTime
 import pandas as pd
 import model
 from fastapi.responses import JSONResponse
 import logging, sys, traceback
+import uvicorn
+import datetime as dt
 
 app = FastAPI()
 
@@ -33,7 +36,14 @@ async def upload(file: UploadFile = File(...), table: str=None, db: _orm.Session
 
         if(table=='employees'):
             utils.validateData(data,table)
-            data.to_sql(name='employees', con=_database.engine, if_exists='replace', index=False)
+            dtype_mapping = {
+                'id': Integer,
+                'name': String,
+                'datetime': DateTime(timezone=True),
+                'department_id': Integer,
+                'job_id': Integer
+            }
+            data.to_sql(name='employees', con=_database.engine, if_exists='replace', index=False, dtype=dtype_mapping)
             return JSONResponse(content={"message": "Data uploaded successfully"}, status_code=200)
         elif(table=='jobs'):
             utils.validateData(data,table)
@@ -69,10 +79,10 @@ async def insert(file: UploadFile = File(...), table: str=None, db: _orm.Session
                 #Validate If the Employee Id not exists yet
                 if (_database.sessionLocal().query(model.Employee).filter(model.Employee.id == int(row['id'])).first()):
                     raise HTTPException(f"Id {row['id']} already exist")
-                logger.info(f"{row[0]}, {row[1]}, {row[2]}")
+                #logger.info(f"{row[0]}, {row[1]}, {row[2]}")
                 
                 #Adding a new Employee
-                new_Employee = model.Employee(id=int(row['id']), name=row['name'], datetime = row['datetime'], department_id= int(row['department_id']), job_id=int(row['job_id']))
+                new_Employee = model.Employee(id=int(row['id']), name=str(row['name']), datetime = pd.to_datetime(row['datetime']), department_id= int(row['department_id']), job_id=int(row['job_id']))
                 _database.sessionLocal().add(new_Employee)
                 items.append(new_Employee)
             
@@ -95,3 +105,6 @@ async def insert(file: UploadFile = File(...), table: str=None, db: _orm.Session
         logger.info(e)
         traceback.print_exception(type(e), e, e.__traceback__)
         return JSONResponse(content={"error": str(e)}, status_code=500)
+
+if __name__ == '__main__':
+    uvicorn.run(app,host='0.0.0.0',port=8000)
