@@ -9,7 +9,7 @@ class Department(_database.base):
     id = _sql.Column(_sql.Integer, primary_key=True, index=True)
     department = _sql.Column(_sql.String)
 
-    departments = _orm.relationship("employees", back_populates="departments")
+    employee = _orm.relationship("Employee", back_populates="department")
 
 
 class Job(_database.base):
@@ -17,7 +17,7 @@ class Job(_database.base):
     id = _sql.Column(_sql.Integer, primary_key=True, index=True)
     job = _sql.Column(_sql.String)
 
-    jobs = _orm.relationship("employees", back_populates="jobs")
+    employee = _orm.relationship("Employee", back_populates="job")
 
 
 class Employee(_database.base):
@@ -28,6 +28,6 @@ class Employee(_database.base):
     department_id = _sql.Column(_sql.Integer, _sql.ForeignKey("departments.id"))
     job_id = _sql.Column(_sql.Integer, _sql.ForeignKey("jobs.id"))
 
-    jobs = _orm.relationship("jobs", back_populates="employees")
-    jobs = _orm.relationship("department", back_populates="employees")
+    job = _orm.relationship("Job", back_populates="employee")
+    department = _orm.relationship("Department", back_populates="employee")
 
