@@ -70,14 +70,13 @@ async def insert(file: UploadFile = File(...), table: str=None, db: _orm.Session
 
         items = []
 
-        if(table=='employees'):
-            utils.validateData(data,table)
-            
-            #Validating if the file has between 1 to 1000 rows
-            if data.shape[0]==0 or data.shape[0]>1000:
-                raise HTTPException(f"File uploaded exceeds the limit")
+        #Validating if the file has between 1 to 1000 rows
+        if data.shape[0]==0 or data.shape[0]>1000:
+            raise HTTPException(f"File uploaded exceeds the limit")
 
-            with _database.sessionLocal() as session:
+        with _database.sessionLocal() as session:
+            if(table=='employees'):
+                utils.validateData(data,table)
                 for i, row in data.iterrows():
                     ##############################################
                     ##Add logic to add batch for Jobs and Departments
@@ -85,15 +84,15 @@ async def insert(file: UploadFile = File(...), table: str=None, db: _orm.Session
 
                     #Validate If the Employee Id not exists yet
                     if (session.query(model.Employee).filter(model.Employee.id == int(row['id'])).first()):
-                        raise HTTPException(f"Id {row['id']} already exist")
+                        raise HTTPException(f"Id {row['id']} already exists in Employee Table")
                     
                     #Validate If the row includes a JobId already created in Job Table
                     if (session.query(model.Job).filter(model.Job.id == int(row['job_id'])).first()):
+                        #Validate If the row includes a DepartmentId already created in Department Table
                         if (session.query(model.Department).filter(model.Department.id == int(row['department_id'])).first()):
                         
                             #Adding a new Employee
                             new_Employee = model.Employee(id=int(row['id']), name=str(row['name']), datetime=row['datetime'], department_id= int(row['department_id']), job_id=int(row['job_id']))
-                            print(f"{new_Employee.id}, {new_Employee.department_id}, {new_Employee.job_id}")
                             session.add(new_Employee)
                             items.append(new_Employee)
                         else:
@@ -102,20 +101,52 @@ async def insert(file: UploadFile = File(...), table: str=None, db: _orm.Session
                         raise HTTPException(f"JobId {row['job_id']} not exist in Job table. Be sure to first create the item")
                 
                 #If all process executed succesfully, we will make the commit in DB
+                print(items)
                 session.commit()
+                    
+                return JSONResponse(content={"message": "Data inserted successfully in Employees table"}, status_code=200)
+            
+            elif(table=='jobs'):
+                utils.validateData(data,table)
+                for i, row in data.iterrows():
+
+                    #Validate If the Job Id not exists yet
+                    if (session.query(model.Job).filter(model.Job.id == int(row['id'])).first()):
+                        raise HTTPException(f"Id {row['id']} already exists in Job Table")
+                    
+                    #Adding a new Job
+                    new_Job = model.Job(id=int(row['id']), job=str(row['job']))
+                    session.add(new_Job)
+                    items.append(new_Job)
+
+                #If all process executed succesfully, we will make the commit in DB
+                print(items)
+                session.commit()
+
+                return JSONResponse(content={"message": "Data inserted successfully in Job table"}, status_code=200)
+            
+            elif(table=='departments'):
+                utils.validateData(data,table)
+                for i, row in data.iterrows():
+
+                    #Validate If the Department Id not exists yet
+                    if (session.query(model.Department).filter(model.Department.id == int(row['id'])).first()):
+                        raise HTTPException(f"Id {row['id']} already exists in Job Table")
+                    
+                    #Adding a new Department
+                    new_Job = model.Department(id=int(row['id']), department=str(row['department']))
+                    session.add(new_Job)
+                    items.append(new_Job)
+
+                #If all process executed succesfully, we will make the commit in DB
+                print(items)
+                session.commit()
+
+                return JSONResponse(content={"message": "Data inserted successfully in Department table"}, status_code=200)
+            else:
+                return JSONResponse(content={"message": f"Not exist table {table}"}, status_code=404)
+            
                 
-            return JSONResponse(content={"message": "Data inserted successfully"}, status_code=200)
-        elif(table=='jobs'):
-            utils.validateData(data,table)
-            data.to_sql(name='jobs', con=_database.engine, if_exists='append', index=False)
-            return JSONResponse(content={"message": "Data inserted successfully"}, status_code=200)
-        elif(table=='departments'):
-            utils.validateData(data,table)
-            data.to_sql(name='departments', con=_database.engine, if_exists='append', index=False)
-            return JSONResponse(content={"message": "Data inserted successfully"}, status_code=200)
-        else:
-            return JSONResponse(content={"message": f"Not exist table {table}"}, status_code=404)
-        
     except Exception as e:
         logger.info(e)
         traceback.print_exception(type(e), e, e.__traceback__)
