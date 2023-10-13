@@ -73,21 +73,22 @@ async def insert(file: UploadFile = File(...), table: str=None, db: _orm.Session
         if(table=='employees'):
             utils.validateData(data,table)
             #data.to_sql(name='employees', con=_database.engine, if_exists='append', index=False)
-            
-            for i, row in data.iterrows():
+            with _database.sessionLocal() as session:
+                for i, row in data.iterrows():
 
-                #Validate If the Employee Id not exists yet
-                if (_database.sessionLocal().query(model.Employee).filter(model.Employee.id == int(row['id'])).first()):
-                    raise HTTPException(f"Id {row['id']} already exist")
-                #logger.info(f"{row[0]}, {row[1]}, {row[2]}")
+                    #Validate If the Employee Id not exists yet
+                    if (session.query(model.Employee).filter(model.Employee.id == int(row['id'])).first()):
+                        raise HTTPException(f"Id {row['id']} already exist")
+
+
+                    #Adding a new Employee
+                    new_Employee = model.Employee(id=int(row['id']), name=str(row['name']), datetime=row['datetime'], department_id= int(row['department_id']), job_id=int(row['job_id']))
+                    print(f"{new_Employee.id}, {new_Employee.department_id}, {new_Employee.job_id}")
+                    session.add(new_Employee)
+                    items.append(new_Employee)
                 
-                #Adding a new Employee
-                new_Employee = model.Employee(id=int(row['id']), name=str(row['name']), datetime = pd.to_datetime(row['datetime']), department_id= int(row['department_id']), job_id=int(row['job_id']))
-                _database.sessionLocal().add(new_Employee)
-                items.append(new_Employee)
-            
-            #If all process executed succesfully, we will make the commit in DB
-            _database.sessionLocal().commit()
+                #If all process executed succesfully, we will make the commit in DB
+                session.commit()
                 
             return JSONResponse(content={"message": "Data inserted successfully"}, status_code=200)
         elif(table=='jobs'):
