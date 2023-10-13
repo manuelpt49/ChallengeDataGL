@@ -72,13 +72,16 @@ async def insert(file: UploadFile = File(...), table: str=None, db: _orm.Session
 
         if(table=='employees'):
             utils.validateData(data,table)
-            #data.to_sql(name='employees', con=_database.engine, if_exists='append', index=False)
+            
+            #Validating if the file has between 1 to 1000 rows
+            if data.shape[0]==0 or data.shape[0]>1000:
+                raise HTTPException(f"File uploaded exceeds the limit")
+
             with _database.sessionLocal() as session:
                 for i, row in data.iterrows():
                     ##############################################
-                    ######## validate from 1 to 1000 rows in batch
-                    ##Validate logic to only include rows with jobId and departmentId already created
                     ##Add logic to add batch for Jobs and Departments
+                    ##Make a deep preprocessing in CSV. No estimate rows with job or department Id in null
 
                     #Validate If the Employee Id not exists yet
                     if (session.query(model.Employee).filter(model.Employee.id == int(row['id'])).first()):
