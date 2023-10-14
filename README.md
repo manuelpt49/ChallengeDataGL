@@ -47,4 +47,6 @@ Before running the application, ensure that you have the following installed:
 4. POST /get_hired_by_quarter: Get a summary of all hired people by quarter, jobs, and department. This endpoint receives a parameter of the year you want to calculate the summary.
 5. POST /hired_by_department: Get a summary of all hired people by departments that exceed the average of hired people. This endpoint receives a parameter of the year you want to calculate the summary.
 
+![Vista API](image.png)
+
 For testing purposes of endpoints, when you execute the application, enter to the route /docs and you will be able to test them.
