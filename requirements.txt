@@ -2,4 +2,8 @@ fastapi==0.103.2
 pandas==2.1.1
 pydantic==2.4.2
 SQLAlchemy==2.0.21
+<<<<<<< HEAD
 uvicorn==0.23.2
+=======
+uvicorn==0.23.2
+>>>>>>> 6c41e35fede6ed9b5cee5aaca77b82b8738b75a9

@@ -9,7 +9,7 @@ import model
 from fastapi.responses import JSONResponse
 import logging, sys, traceback
 import uvicorn
-import os
+
 
 app = FastAPI()
 
