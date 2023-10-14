@@ -3,13 +3,14 @@ from fastapi import FastAPI, UploadFile, File, Depends, HTTPException
 import utils
 import database as _database
 import sqlalchemy.orm as _orm
-from sqlalchemy import Integer, String, DateTime
+from sqlalchemy import Integer, String, DateTime, text
 import pandas as pd
 import model
 from fastapi.responses import JSONResponse
 import logging, sys, traceback
 import uvicorn
 import datetime as dt
+import json
 
 app = FastAPI()
 
@@ -18,11 +19,14 @@ logger.setLevel(logging.DEBUG)
 logger.addHandler(logging.StreamHandler(sys.stdout))
 
 
-@app.get("/")
+@app.get("/createdb")
 def read_root():
     #Creating DB and Tables with their schemas
-    _database.base.metadata.create_all(bind=_database.engine)
-    return {"Hello": "World"}
+    try:
+        _database.base.metadata.create_all(bind=_database.engine)
+        return JSONResponse(content={"message": "DB created succesfully"}, status_code=200)
+    except Exception as e:
+        return JSONResponse(content={"message": f"Eror creating db {e}"}, status_code=500)
 
 @app.post("/upload")
 async def upload(file: UploadFile = File(...), table: str=None, db: _orm.Session = Depends(utils.get_db)):
@@ -79,7 +83,6 @@ async def insert(file: UploadFile = File(...), table: str=None, db: _orm.Session
                 utils.validateData(data,table)
                 for i, row in data.iterrows():
                     ##############################################
-                    ##Add logic to add batch for Jobs and Departments
                     ##Make a deep preprocessing in CSV. No estimate rows with job or department Id in null
 
                     #Validate If the Employee Id not exists yet
@@ -151,6 +154,47 @@ async def insert(file: UploadFile = File(...), table: str=None, db: _orm.Session
         logger.info(e)
         traceback.print_exception(type(e), e, e.__traceback__)
         return JSONResponse(content={"error": str(e)}, status_code=500)
+
+
+@app.post("/get_hired_by_quarter")
+async def insert(year: int=None, db: _orm.Session = Depends(utils.get_db)):
+    #This query makes a summary of all hired people by quarter
+    #This API receives the year that we want to make the summarize
+    try:
+        query = text(f"""WITH DB1 AS (
+                                    SELECT *,
+                                        CASE
+                                        WHEN strftime('%m', E.datetime) BETWEEN '01' AND '03' THEN 'Q1'
+                                        WHEN strftime('%m', E.datetime) BETWEEN '04' AND '06' THEN 'Q2'
+                                        WHEN strftime('%m', E.datetime) BETWEEN '07' AND '09' THEN 'Q3'
+                                        ELSE 'Q4'
+                                    END AS quarter FROM Employees E 
+                                    INNER JOIN Jobs J ON E.job_id=J.id
+                                    INNER JOIN Departments D ON E.department_id = D.id
+                                    WHERE strftime('%Y', E.datetime)='{year}'
+                                ),
+                                DB2 AS (
+                                    SELECT department_id, department, job_id, job, quarter, COUNT(*) as counts FROM DB1 GROUP BY department_id, department, job_id, job, quarter
+                                )
+                                SELECT department, job,
+                                    MAX(CASE WHEN quarter='Q1' THEN counts ELSE 0 END) AS Q1,
+                                    MAX(CASE WHEN quarter='Q2' THEN counts ELSE 0 END) AS Q2,
+                                    MAX(CASE WHEN quarter='Q3' THEN counts ELSE 0 END) AS Q3,
+                                    MAX(CASE WHEN quarter='Q4' THEN counts ELSE 0 END) AS Q4
+                                    FROM DB2 GROUP BY department_id, department, job_id, job
+                                    ORDER BY department, job ASC""")
+        #Fetching all rows 
+        result = db.execute(query).fetchall()
+        
+        #Creating a dict for each row 
+        results = [{i:tuple(result[i])} for i in range(len(result))]
+
+        return JSONResponse(content={"response": results}, status_code=200)
+    except Exception as e:
+        logger.info(e)
+        traceback.print_exception(type(e), e, e.__traceback__)
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+    
 
 if __name__ == '__main__':
     uvicorn.run(app,host='0.0.0.0',port=8000)
