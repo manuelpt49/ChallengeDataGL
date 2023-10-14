@@ -9,8 +9,6 @@ import model
 from fastapi.responses import JSONResponse
 import logging, sys, traceback
 import uvicorn
-import datetime as dt
-import json
 
 app = FastAPI()
 
@@ -222,5 +220,5 @@ async def insert(year: int=None, db: _orm.Session = Depends(utils.get_db)):
         traceback.print_exception(type(e), e, e.__traceback__)
         return JSONResponse(content={"error": str(e)}, status_code=500)
 
-if __name__ == '__main__':
-    uvicorn.run(app,host='0.0.0.0',port=8000)
+#if __name__ == '__main__':
+#    uvicorn.run(app,host='0.0.0.0',port=8000)
