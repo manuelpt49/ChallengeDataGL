@@ -159,7 +159,7 @@ async def insert(file: UploadFile = File(...), table: str=None, db: _orm.Session
 @app.post("/get_hired_by_quarter")
 async def insert(year: int=None, db: _orm.Session = Depends(utils.get_db)):
     #This query makes a summary of all hired people by quarter
-    #This API receives the year that we want to make the summarize
+    #This API receives the year that we want to make the summarization
     try:
         query = text(f"""WITH DB1 AS (
                                     SELECT *,
@@ -194,7 +194,33 @@ async def insert(year: int=None, db: _orm.Session = Depends(utils.get_db)):
         logger.info(e)
         traceback.print_exception(type(e), e, e.__traceback__)
         return JSONResponse(content={"error": str(e)}, status_code=500)
-    
+
+@app.post("/hired_by_department")
+async def insert(year: int=None, db: _orm.Session = Depends(utils.get_db)):
+    #This query makes a summary of all hired people by department
+    #This API receives the year that we want to make the summarization
+    try:
+        query = text(f"""WITH TotalHiredByDepartments AS (
+                            SELECT D.id, D.department, COUNT(*) hired FROM Employees E 
+                                INNER JOIN Departments D ON E.department_id = D.id
+                                WHERE strftime('%Y', E.datetime)='{year}'
+                                GROUP BY D.id, D.department
+                            ),
+                            AvergaeHired AS (
+                                SELECT AVG(hired) average FROM TotalHiredByDepartments
+                            )
+                            SELECT id, department, hired FROM TotalHiredByDepartments WHERE hired > (SELECT * FROM AvergaeHired) ORDER BY hired DESC""")
+        #Fetching all rows 
+        result = db.execute(query).fetchall()
+        
+        #Creating a dict for each row 
+        results = [{i:tuple(result[i])} for i in range(len(result))]
+
+        return JSONResponse(content={"response": results}, status_code=200)
+    except Exception as e:
+        logger.info(e)
+        traceback.print_exception(type(e), e, e.__traceback__)
+        return JSONResponse(content={"error": str(e)}, status_code=500)
 
 if __name__ == '__main__':
     uvicorn.run(app,host='0.0.0.0',port=8000)
