@@ -1,9 +1,4 @@
 .venv/
 __pycache__/
-<<<<<<< HEAD
 app/__pycache__/
 app/database.db
-=======
-src/__pycache__/
-src/database.db
->>>>>>> 6c41e35fede6ed9b5cee5aaca77b82b8738b75a9
